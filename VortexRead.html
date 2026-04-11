@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VortexRead — Free Online Speed Reader | Read at 900 WPM</title>
+<meta name="description" content="Free online RSVP speed reader. Paste any text, hit play, read up to 1200 WPM. No signup, no install, 100% private.">
+<meta name="keywords" content="speed reading, RSVP reader, rapid serial visual presentation, read faster, speed reading online, free speed reader, words per minute">
+<meta property="og:title" content="VortexRead — Read at 900 WPM">
+<meta property="og:description" content="Free online speed reader. Paste text, hit play, read 3x faster.">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://vortexread.com">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700;800&family=Outfit:wght@300;400;500;600;700;800;900&family=DM+Sans:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #08080a;
+    --bg2: #0c0c0f;
+    --surface: #131316;
+    --surface2: #1a1a1f;
+    --border: #252530;
+    --text: #eae8e4;
+    --text2: #c0beb8;
+    --dim: #55555e;
+    --accent: #ff2d55;
+    --accent2: #ff4d6d;
+    --glow: rgba(255,45,85,0.2);
+    --glow2: rgba(255,45,85,0.08);
+    --yellow: #ffd60a;
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html { scroll-behavior:smooth; background:var(--bg); color:var(--text); }
+  body { font-family:'Outfit',sans-serif; -webkit-font-smoothing:antialiased; overflow-x:hidden; }
+
+  /* Noise overlay */
+  body::before {
+    content:''; position:fixed; top:0;left:0;right:0;bottom:0;
+    background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+    pointer-events:none; z-index:9999;
+  }
+
+  /* ═══ HERO — the reader IS the hero ═══ */
+  .hero {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 40px 24px 60px;
+    position: relative;
+  }
+
+  /* Radial glow */
+  .hero::before {
+    content:''; position:absolute; top:-10%; left:50%; transform:translateX(-50%);
+    width:700px; height:700px;
+    background:radial-gradient(circle,rgba(255,45,85,0.06) 0%,transparent 70%);
+    pointer-events:none;
+  }
+
+  /* Tiny top bar */
+  .top-bar {
+    display:flex; justify-content:space-between; align-items:center;
+    width:100%; max-width:660px; margin-bottom:24px;
+  }
+  .logo {
+    font-family:'JetBrains Mono',monospace;
+    font-size:12px; font-weight:800;
+    letter-spacing:4px; text-transform:uppercase;
+    color:var(--dim);
+  }
+  .logo span { color:var(--accent); }
+  .tagline {
+    font-size:12px; color:var(--dim);
+    letter-spacing:1px;
+  }
+
+  /* One-liner kept for SEO as hidden h1 */
+
+  @keyframes fadeUp {
+    from { opacity:0; transform:translateY(16px); }
+    to { opacity:1; transform:translateY(0); }
+  }
+
+  /* ═══ THE READER ═══ */
+  .reader-wrap {
+    width:100%; max-width:660px;
+    animation: fadeUp 0.6s ease 0.1s both;
+  }
+
+  .display-zone {
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:14px;
+    overflow:hidden;
+    margin-bottom:16px;
+    box-shadow:0 8px 60px rgba(0,0,0,0.4);
+  }
+
+  .word-display {
+    height:160px;
+    position:relative;
+    overflow:hidden;
+  }
+
+  .guide-line {
+    position:absolute; top:0;bottom:0;left:50%;
+    width:1px; background:var(--accent); opacity:0.12;
+    pointer-events:none;
+  }
+  .notch-t,.notch-b {
+    position:absolute; left:50%; transform:translateX(-50%);
+    pointer-events:none; z-index:3;
+  }
+  .notch-t {
+    top:0;
+    border-left:6px solid transparent;
+    border-right:6px solid transparent;
+    border-top:8px solid var(--accent); opacity:0.5;
+  }
+  .notch-b {
+    bottom:0;
+    border-left:6px solid transparent;
+    border-right:6px solid transparent;
+    border-bottom:8px solid var(--accent); opacity:0.5;
+  }
+
+  .rsvp-wrap {
+    display:none; position:absolute;
+    top:0;left:0;right:0;bottom:0; z-index:2;
+    font-family:'JetBrains Mono',monospace;
+    font-size:48px; font-weight:700;
+    letter-spacing:2px; pointer-events:none;
+  }
+  .rsvp-pivot {
+    position:absolute; top:50%;left:50%;
+    transform:translate(-50%,-50%); color:var(--accent);
+  }
+  .rsvp-left {
+    position:absolute; top:50%; transform:translateY(-50%);
+    color:var(--text); text-align:right;
+  }
+  .rsvp-right {
+    position:absolute; top:50%; transform:translateY(-50%);
+    color:var(--text); text-align:left;
+  }
+
+  .idle-msg {
+    position:absolute; top:50%;left:50%;
+    transform:translate(-50%,-50%);
+    font-family:'JetBrains Mono',monospace;
+    font-size:13px; color:var(--dim);
+    letter-spacing:2px; text-transform:uppercase;
+    animation:pulse 2s ease-in-out infinite;
+  }
+  @keyframes pulse { 0%,100%{opacity:.35} 50%{opacity:1} }
+
+  .prog-track { height:3px; background:var(--surface2); }
+  .prog-fill {
+    height:100%; background:var(--accent); width:0%;
+    transition:width 0.08s linear;
+    box-shadow:0 0 8px var(--glow);
+  }
+
+  .stats {
+    display:flex; justify-content:space-between;
+    padding:10px 16px; background:var(--surface2);
+    font-family:'JetBrains Mono',monospace;
+    font-size:11px; color:var(--dim); letter-spacing:1px;
+  }
+  .stats .wpm { color:var(--yellow); font-weight:700; font-size:12px; }
+
+  .ctrl-row {
+    display:flex; align-items:center; gap:8px;
+    margin-bottom:12px;
+  }
+
+  .btn {
+    font-family:'JetBrains Mono',monospace;
+    font-size:11px; font-weight:700;
+    letter-spacing:2px; text-transform:uppercase;
+    border:1px solid var(--border);
+    background:var(--surface); color:var(--text);
+    padding:10px 18px; border-radius:8px;
+    cursor:pointer; transition:all 0.15s;
+    white-space:nowrap;
+  }
+  .btn:hover { background:var(--surface2); border-color:var(--dim); }
+  .btn-play {
+    background:var(--accent); border-color:var(--accent);
+    color:#fff; flex-shrink:0;
+  }
+  .btn-play:hover { background:var(--accent2); box-shadow:0 0 20px var(--glow); }
+
+  .speed-row {
+    display:flex; align-items:center; gap:8px; flex:1;
+  }
+  .speed-row label {
+    font-family:'JetBrains Mono',monospace;
+    font-size:10px; color:var(--dim);
+    letter-spacing:1px; text-transform:uppercase; flex-shrink:0;
+  }
+  .speed-row input[type=range] {
+    flex:1; min-width:80px;
+    -webkit-appearance:none; appearance:none;
+    height:3px; background:var(--surface2);
+    border-radius:2px; outline:none;
+  }
+  .speed-row input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance:none; width:14px;height:14px;
+    border-radius:50%; background:var(--accent); cursor:pointer;
+    box-shadow:0 0 8px var(--glow);
+  }
+  .speed-row input[type=range]::-moz-range-thumb {
+    width:14px;height:14px; border-radius:50%;
+    background:var(--accent); cursor:pointer; border:none;
+  }
+  .wpm-val {
+    font-family:'JetBrains Mono',monospace;
+    font-size:16px; font-weight:800;
+    color:var(--yellow); min-width:48px;
+    text-align:right; flex-shrink:0;
+  }
+
+  .reader-textarea {
+    width:100%; min-height:110px;
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:10px; color:var(--text);
+    font-family:'DM Sans',sans-serif;
+    font-size:14px; line-height:1.6;
+    padding:14px 16px;
+    resize:vertical; outline:none;
+    transition:border-color 0.15s;
+    margin-bottom:8px;
+  }
+  .reader-textarea:focus { border-color:var(--accent); box-shadow:0 0 0 3px var(--glow); }
+  .reader-textarea::placeholder { color:var(--dim); }
+
+  .reader-footer {
+    display:flex; justify-content:space-between;
+    font-family:'JetBrains Mono',monospace;
+    font-size:10px; color:var(--dim); letter-spacing:1px;
+  }
+  .reader-footer kbd {
+    background:var(--surface2); border:1px solid var(--border);
+    border-radius:3px; padding:1px 5px; color:var(--text);
+    font-family:inherit;
+  }
+
+  /* ═══ Skill tree tiers ═══ */
+  .skill-tree {
+    display:flex;
+    gap:8px;
+    margin-top:20px;
+    padding:16px;
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:12px;
+  }
+
+  .tier {
+    flex:1;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:8px;
+  }
+
+  .tier-node {
+    width:12px; height:12px;
+    border-radius:50%;
+    border:2px solid var(--border);
+    position:relative;
+  }
+  .tier-node::before {
+    content:'';
+    position:absolute;
+    top:50%; left:100%;
+    width:calc(100% + 44px);
+    height:1px;
+    background:var(--border);
+  }
+  .tier:last-child .tier-node::before { display:none; }
+
+  .tier-locked { background:var(--surface2); border-color:var(--dim); }
+  .tier-active { background:var(--accent); border-color:var(--accent); box-shadow:0 0 8px var(--glow); }
+  .tier-gold { background:var(--yellow); border-color:var(--yellow); box-shadow:0 0 8px rgba(255,214,10,0.3); }
+
+  .tier-bar {
+    width:100%; height:4px;
+    background:var(--surface2);
+    border-radius:2px; overflow:hidden;
+  }
+  .tier-fill { height:100%; border-radius:2px; }
+
+  .tier-info {
+    display:flex; flex-direction:column;
+    align-items:center; gap:2px;
+  }
+  .tier-name {
+    font-family:'JetBrains Mono',monospace;
+    font-size:10px; font-weight:700;
+    color:var(--text2); letter-spacing:1px;
+    text-transform:uppercase;
+  }
+  .tier-wpm {
+    font-family:'JetBrains Mono',monospace;
+    font-size:11px; font-weight:800;
+    color:var(--dim);
+  }
+  .tier:nth-child(3) .tier-wpm { color:var(--accent); }
+  .tier:nth-child(4) .tier-wpm { color:var(--yellow); }
+
+  /* Scroll hint */
+  .scroll-hint {
+    margin-top:auto;
+    padding-top:40px;
+    text-align:center;
+    animation: fadeUp 0.6s ease 0.4s both;
+  }
+  .scroll-hint a {
+    font-family:'JetBrains Mono',monospace;
+    font-size:10px; color:var(--dim);
+    letter-spacing:2px; text-transform:uppercase;
+    text-decoration:none;
+    transition:color 0.2s;
+  }
+  .scroll-hint a:hover { color:var(--text2); }
+  .scroll-arrow {
+    display:block; margin:8px auto 0;
+    width:20px; height:20px;
+    border-right:1.5px solid var(--dim);
+    border-bottom:1.5px solid var(--dim);
+    transform:rotate(45deg);
+    animation:bobDown 2s ease-in-out infinite;
+  }
+  @keyframes bobDown {
+    0%,100%{transform:rotate(45deg) translate(0,0);opacity:0.3}
+    50%{transform:rotate(45deg) translate(4px,4px);opacity:0.8}
+  }
+
+  /* ═══ SECTIONS BELOW ═══ */
+  .section {
+    padding:100px 24px;
+    max-width:900px;
+    margin:0 auto;
+  }
+
+  .section-label {
+    font-family:'JetBrains Mono',monospace;
+    font-size:11px; font-weight:700;
+    letter-spacing:4px; text-transform:uppercase;
+    color:var(--accent); margin-bottom:16px;
+    text-align:center;
+  }
+
+  .section-title {
+    font-size:clamp(26px,3.5vw,40px);
+    font-weight:800; text-align:center;
+    margin-bottom:16px; letter-spacing:-1px;
+  }
+
+  .section-sub {
+    font-size:16px; color:var(--text2);
+    text-align:center; max-width:500px;
+    margin:0 auto 56px; line-height:1.6;
+  }
+
+  /* Steps */
+  .steps {
+    display:flex; gap:40px; justify-content:center;
+    flex-wrap:wrap; margin-bottom:80px;
+  }
+  .step { text-align:center; max-width:200px; }
+  .step-num {
+    font-family:'JetBrains Mono',monospace;
+    font-size:40px; font-weight:800;
+    color:var(--accent); opacity:0.25;
+    line-height:1; margin-bottom:10px;
+  }
+  .step h3 { font-size:15px; font-weight:700; margin-bottom:6px; }
+  .step p { font-size:13px; color:var(--dim); line-height:1.5; }
+
+  /* Feature cards */
+  .features-grid {
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(250px,1fr));
+    gap:20px;
+  }
+  .feature-card {
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:14px; padding:28px;
+    transition:all 0.3s;
+  }
+  .feature-card:hover {
+    border-color:rgba(255,45,85,0.15);
+    transform:translateY(-3px);
+    box-shadow:0 6px 30px var(--glow2);
+  }
+  .feature-icon {
+    width:42px;height:42px;
+    background:var(--glow2);
+    border:1px solid rgba(255,45,85,0.1);
+    border-radius:10px;
+    display:flex; align-items:center; justify-content:center;
+    font-size:20px; margin-bottom:16px;
+  }
+  .feature-card h3 { font-size:16px; font-weight:700; margin-bottom:8px; }
+  .feature-card p { font-size:13px; color:var(--text2); line-height:1.6; }
+
+  /* Science */
+  .science-grid {
+    display:grid; grid-template-columns:1fr 1fr;
+    gap:40px; align-items:center;
+  }
+  .science-text h3 { font-size:22px; font-weight:700; margin-bottom:10px; }
+  .science-text p { color:var(--text2); line-height:1.7; font-size:14px; }
+  .science-visual { display:flex; flex-direction:column; gap:14px; }
+  .sci-bar { display:flex; align-items:center; gap:10px; }
+  .sci-bar-label {
+    font-family:'JetBrains Mono',monospace;
+    font-size:10px; color:var(--dim);
+    min-width:90px; text-align:right; letter-spacing:1px;
+  }
+  .sci-bar-track {
+    flex:1; height:7px; background:var(--surface2);
+    border-radius:4px; overflow:hidden;
+  }
+  .sci-bar-fill { height:100%; border-radius:4px; }
+  .sci-bar-val {
+    font-family:'JetBrains Mono',monospace;
+    font-size:12px; font-weight:700;
+    color:var(--yellow); min-width:65px;
+  }
+
+  /* Divider */
+  .divider {
+    height:1px;
+    background:linear-gradient(90deg,transparent,var(--border),transparent);
+    max-width:400px; margin:0 auto;
+  }
+
+  /* Footer */
+  footer {
+    text-align:center; padding:40px 24px;
+    font-size:13px; color:var(--dim);
+  }
+  footer .flogo {
+    font-family:'JetBrains Mono',monospace;
+    font-size:11px; font-weight:800;
+    letter-spacing:4px; text-transform:uppercase;
+    color:var(--dim); margin-bottom:6px;
+  }
+  footer .flogo span { color:var(--accent); }
+
+  /* Responsive */
+  @media(max-width:768px){
+    .science-grid{grid-template-columns:1fr;}
+    .steps{flex-direction:column;align-items:center;}
+    .top-bar{flex-direction:column;gap:4px;align-items:center;}
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══ HERO: JUST THE TOOL ═══ -->
+<section class="hero">
+  <div class="top-bar">
+    <div class="logo">Vortex<span>Read</span></div>
+  </div>
+
+  <!-- THE READER -->
+  <div class="reader-wrap">
+    <div class="display-zone">
+      <div class="word-display" id="wordDisplay">
+        <div class="guide-line"></div>
+        <div class="notch-t"></div>
+        <div class="notch-b"></div>
+        <span class="idle-msg" id="idleMsg">Paste text below & press play</span>
+        <div class="rsvp-wrap" id="rsvpWrap">
+          <span class="rsvp-left" id="rsvpLeft"></span>
+          <span class="rsvp-pivot" id="rsvpPivot"></span>
+          <span class="rsvp-right" id="rsvpRight"></span>
+        </div>
+      </div>
+      <div class="prog-track"><div class="prog-fill" id="progFill"></div></div>
+      <div class="stats">
+        <span id="wordIdx">0 / 0</span>
+        <span class="wpm" id="wpmLbl">450 WPM</span>
+      </div>
+    </div>
+
+    <div class="ctrl-row">
+      <button class="btn btn-play" id="playBtn">▶ Play</button>
+      <button class="btn" id="resetBtn">↺ Reset</button>
+      <button class="btn" id="randomBtn">🎲 Sample</button>
+      <div class="speed-row">
+        <label>WPM</label>
+        <input type="range" min="100" max="1200" step="25" value="450" id="slider">
+        <span class="wpm-val" id="spdVal">450</span>
+      </div>
+    </div>
+
+    <textarea class="reader-textarea" id="txt" placeholder="Paste any text here and hit play..."></textarea>
+
+    <div class="reader-footer">
+      <span id="wc">0 words</span>
+      <span><kbd>Space</kbd> play/pause · <kbd>←→</kbd> ±50 wpm · <kbd>R</kbd> reset</span>
+    </div>
+
+    <!-- Skill tree: speed tiers -->
+    <div class="skill-tree">
+      <div class="tier">
+        <div class="tier-node tier-locked"></div>
+        <div class="tier-bar"><div class="tier-fill" style="width:100%;background:var(--dim)"></div></div>
+        <div class="tier-info">
+          <span class="tier-name">Casual</span>
+          <span class="tier-wpm">200 wpm</span>
+        </div>
+      </div>
+      <div class="tier">
+        <div class="tier-node tier-locked"></div>
+        <div class="tier-bar"><div class="tier-fill" style="width:100%;background:var(--text2)"></div></div>
+        <div class="tier-info">
+          <span class="tier-name">Focused</span>
+          <span class="tier-wpm">400 wpm</span>
+        </div>
+      </div>
+      <div class="tier">
+        <div class="tier-node tier-active"></div>
+        <div class="tier-bar"><div class="tier-fill" style="width:100%;background:var(--accent)"></div></div>
+        <div class="tier-info">
+          <span class="tier-name">Speed Reader</span>
+          <span class="tier-wpm">600 wpm</span>
+        </div>
+      </div>
+      <div class="tier">
+        <div class="tier-node tier-gold"></div>
+        <div class="tier-bar"><div class="tier-fill" style="width:100%;background:var(--yellow)"></div></div>
+        <div class="tier-info">
+          <span class="tier-name">Vortex</span>
+          <span class="tier-wpm">900+ wpm</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="scroll-hint">
+    <a href="#how">How does it work?</a>
+    <span class="scroll-arrow"></span>
+  </div>
+</section>
+
+<!-- ═══ HOW IT WORKS ═══ -->
+<div class="divider"></div>
+<section class="section" id="how">
+  <div class="section-label">How it works</div>
+  <h2 class="section-title">Paste. Set speed. Read.</h2>
+
+  <div class="steps">
+    <div class="step">
+      <h3>Paste your text</h3>
+      <p>Article, book chapter, email, study notes — anything.</p>
+    </div>
+    <div class="step">
+      <h3>Set your speed</h3>
+      <p>Start at 300 WPM. Most people hit 500+ in minutes.</p>
+    </div>
+    <div class="step">
+      <h3>Read</h3>
+      <p>Words flash at a fixed point. Your eyes stay still. Your brain does the rest.</p>
+    </div>
+  </div>
+
+  <div class="features-grid">
+    <div class="feature-card">
+      <div class="feature-icon">🎯</div>
+      <h3>Optimal Recognition Point</h3>
+      <p>A red pivot letter marks where your brain recognizes each word fastest — always locked to center.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">⏸</div>
+      <h3>Smart Pauses</h3>
+      <p>Automatic pauses after sentences so ideas land naturally. Consistent at any speed.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">⌨️</div>
+      <h3>Keyboard Control</h3>
+      <p>Space to play/pause, arrows to adjust speed, R to reset. Hands on keyboard, eyes on words.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🔒</div>
+      <h3>100% Private</h3>
+      <p>Text never leaves your browser. No servers, no tracking, no accounts. Runs entirely local.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">📱</div>
+      <h3>Any Device</h3>
+      <p>Desktop, tablet, phone. No app to install, no updates. Just open and read.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🧠</div>
+      <h3>Science-Backed</h3>
+      <p>Built on RSVP — Rapid Serial Visual Presentation — a proven technique for eliminating reading bottlenecks.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ THE SCIENCE ═══ -->
+<div class="divider"></div>
+<section class="section">
+  <div class="section-label">Why it works</div>
+  <h2 class="section-title">RSVP</h2>
+  <p class="section-sub">
+    When reading a page, your eyes jump between words in rapid movements called saccades — each costing 20-30ms where your brain goes idle. RSVP eliminates saccades entirely. Words come to you at a fixed point, so 100% of your attention goes to comprehension. The red letter marks the Optimal Recognition Point — where your brain identifies words fastest.
+  </p>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="flogo">Vortex<span>Read</span></div>
+  <p>Free, private, fast. No accounts. No tracking. Just reading.</p>
+</footer>
+
+<!-- ═══ READER JS ═══ -->
+<script>
+  const $=id=>document.getElementById(id);
+  const txtEl=$('txt'),idleMsg=$('idleMsg'),rsvpWrap=$('rsvpWrap'),
+    rL=$('rsvpLeft'),rP=$('rsvpPivot'),rR=$('rsvpRight'),
+    wd=$('wordDisplay'),pf=$('progFill'),wiLbl=$('wordIdx'),
+    wLbl=$('wpmLbl'),slider=$('slider'),spdVal=$('spdVal'),
+    playBtn=$('playBtn'),resetBtn=$('resetBtn'),wcLbl=$('wc');
+
+  let words=[],idx=0,playing=false,timer=null,wpm=450,charW=0;
+
+  function measure(){
+    const m=document.createElement('span');
+    m.style.cssText='position:absolute;visibility:hidden;font-family:"JetBrains Mono",monospace;font-size:48px;font-weight:700;letter-spacing:2px;white-space:nowrap;';
+    m.textContent='M';
+    document.body.appendChild(m);
+    charW=m.getBoundingClientRect().width;
+    document.body.removeChild(m);
+  }
+
+  function pivotOf(w){
+    const n=w.length;
+    if(n<=1)return 0;if(n<=3)return 1;if(n<=5)return 1;
+    if(n<=9)return 2;if(n<=13)return 3;return 4;
+  }
+
+  function show(w){
+    const p=pivotOf(w);
+    rL.textContent=w.slice(0,p);
+    rP.textContent=w[p];
+    rR.textContent=w.slice(p+1);
+    const dw=wd.offsetWidth,c=dw/2;
+    rL.style.right=(dw-c+charW/2)+'px';rL.style.left='auto';
+    rR.style.left=(c+charW/2)+'px';rR.style.right='auto';
+    rsvpWrap.style.display='block';idleMsg.style.display='none';
+  }
+
+  function ms(w){
+    let b=60000/wpm,extra=0;
+    if(w.length>8)extra+=20;
+    if(/[,;:]$/.test(w))extra+=120;
+    if(/[.!?]/.test(w))extra+=300;
+    return b+extra;
+  }
+
+  function stats(){
+    const t=words.length;
+    pf.style.width=t?(idx/t*100)+'%':'0%';
+    wiLbl.textContent=`${idx} / ${t}`;
+    wLbl.textContent=`${wpm} WPM`;
+  }
+
+  function tick(){
+    if(idx>=words.length){stop();return;}
+    show(words[idx]);const d=ms(words[idx]);
+    idx++;stats();timer=setTimeout(tick,d);
+  }
+
+  function play(){
+    if(!words.length)parse();if(!words.length)return;
+    if(idx>=words.length)idx=0;
+    playing=true;playBtn.textContent='⏸ Pause';tick();
+  }
+  function pause(){playing=false;clearTimeout(timer);playBtn.textContent='▶ Play';}
+  function stop(){pause();playBtn.textContent='▶ Replay';}
+  function reset(){
+    pause();idx=0;rsvpWrap.style.display='none';idleMsg.style.display='';
+    pf.style.width='0%';wiLbl.textContent=`0 / ${words.length}`;
+    wLbl.textContent=`${wpm} WPM`;playBtn.textContent='▶ Play';
+  }
+
+  function parse(){
+    const raw=txtEl.value.trim().split(/\s+/).filter(Boolean);
+    words=[];
+    for(let tok of raw){
+      tok=tok.replace(/['"''""\u2018\u2019\u201C\u201D`]/g,'');
+      if(!tok)continue;
+      const parts=tok.split(/([^a-zA-Z0-9])/g).filter(Boolean);
+      if(parts.length<=1){words.push(tok);}
+      else{
+        let merged=[];
+        for(const p of parts){
+          if(/^[^a-zA-Z0-9]$/.test(p)&&merged.length)merged[merged.length-1]+=p;
+          else merged.push(p);
+        }
+        words.push(...merged.filter(Boolean));
+      }
+    }
+    stats();wcLbl.textContent=`${words.length} word${words.length!==1?'s':''}`;
+  }
+
+  function save(){try{localStorage.setItem('vr-t',txtEl.value);localStorage.setItem('vr-w',wpm);}catch{}}
+  function load(){try{
+    const t=localStorage.getItem('vr-t'),w=localStorage.getItem('vr-w');
+    if(t){txtEl.value=t;parse();}
+    if(w){wpm=+w;slider.value=wpm;spdVal.textContent=wpm;wLbl.textContent=wpm+' WPM';}
+  }catch{}}
+
+  slider.addEventListener('input',()=>{wpm=+slider.value;spdVal.textContent=wpm;wLbl.textContent=wpm+' WPM';save();});
+  playBtn.addEventListener('click',()=>playing?pause():play());
+  resetBtn.addEventListener('click',reset);
+
+  // ── Sample texts ──
+  const samples=[
+    "The human brain processes visual information in roughly 13 milliseconds. When you read traditionally, most of your time is spent moving your eyes between words, not actually understanding them. Each eye movement, called a saccade, takes 20 to 30 milliseconds, and your brain essentially goes offline during the transition. By eliminating saccades entirely and presenting words at a fixed focal point, RSVP lets your brain operate at its natural processing speed. Most people are surprised to find they can comfortably read at twice their normal pace with no loss in comprehension.",
+
+    "In 1970, Alvin Toffler published Future Shock, arguing that society was undergoing enormous structural change at a pace that was overwhelming people. He coined the term information overload to describe the difficulty of making decisions when faced with too much data. Half a century later, the average person consumes about 34 gigabytes of information per day. The ability to read quickly and retain what matters has shifted from a nice skill to a survival tool. Speed reading is no longer about showing off. It is about keeping up.",
+
+    "Coffee was first discovered in Ethiopia around the 9th century when a goat herder named Kaldi noticed his goats became unusually energetic after eating berries from a certain tree. He brought the berries to a local monastery where monks made a drink from them and found it helped them stay awake during long evening prayers. From there coffee spread to the Arabian Peninsula, then to Europe, and eventually to the rest of the world. Today over two billion cups of coffee are consumed every single day worldwide.",
+
+    "The octopus has three hearts, nine brains, and blue blood. Two of its hearts pump blood to the gills, while the third pumps it to the rest of the body. Each of its eight arms contains a cluster of neurons that acts as a mini brain, allowing the arms to act independently. When an octopus swims, the heart that delivers blood to the body stops beating, which is why these creatures prefer crawling. They can also change color and texture in milliseconds, squeeze through any gap larger than their beak, and open jars from the inside.",
+
+    "The Great Wall of China is not a single continuous wall but a series of walls and fortifications built over approximately 2000 years by different dynasties. The most well known sections were built during the Ming Dynasty between 1368 and 1644. Contrary to popular belief, the wall is not visible from space with the naked eye. Its total length including all branches and sections stretches over 21000 kilometers. At its peak, roughly one million soldiers were stationed along the wall to defend against invasions from the north.",
+
+    "Neuroplasticity is the brain's ability to reorganize itself by forming new neural connections throughout life. This means your brain is not fixed after childhood. Every time you learn a new skill, your brain physically rewires itself. London taxi drivers, who must memorize 25000 streets, have been shown to have larger hippocampi than average. Musicians who practice regularly develop more gray matter in regions related to motor control and auditory processing. The brain you have today is literally shaped by what you did yesterday.",
+
+    "Light from the Sun takes about 8 minutes and 20 seconds to reach Earth. This means that when you look at the Sun, you are seeing it as it was over 8 minutes ago. The nearest star after the Sun, Proxima Centauri, is about 4.24 light years away. Its light takes over four years to reach us. When we look at the Andromeda galaxy, we see it as it was 2.5 million years ago. In a very real sense, every time you look at the night sky, you are looking back in time.",
+
+    "Sleep is not a passive state. During deep sleep your brain consolidates memories, clears metabolic waste through the glymphatic system, and repairs cellular damage. Missing just one night of sleep reduces your cognitive performance by roughly the same amount as being legally drunk. Chronic sleep deprivation has been linked to heart disease, obesity, weakened immune function, and accelerated aging. The World Health Organization has declared a sleep loss epidemic in industrialized nations. Adults need seven to nine hours per night, and no, you cannot catch up on weekends."
+  ];
+
+  const randomBtn=$('randomBtn');
+  randomBtn.addEventListener('click',()=>{
+    const s=samples[Math.floor(Math.random()*samples.length)];
+    txtEl.value=s;
+    parse();reset();save();
+  });
+  txtEl.addEventListener('input',()=>{
+    const c=txtEl.value.trim()?txtEl.value.trim().split(/\s+/).length:0;
+    wcLbl.textContent=`${c} word${c!==1?'s':''}`;
+    if(words.length&&!playing){parse();reset();}
+    save();
+  });
+
+  // ── Click-to-seek: click a word in textarea to start reading from there ──
+  txtEl.addEventListener('click',()=>{
+    if(!txtEl.value.trim())return;
+    // Count how many whitespace-separated words are before the cursor
+    const pos=txtEl.selectionStart;
+    const textBefore=txtEl.value.slice(0,pos);
+    // Count raw words before cursor
+    const rawBefore=textBefore.trim().split(/\s+/).filter(Boolean);
+    if(!rawBefore.length)return;
+
+    // We need to map raw word index to parsed word index
+    // Since parse() splits tokens further, we need to count how many parsed words
+    // correspond to the raw words before cursor
+    if(!words.length)parse();
+
+    let rawIdx=0, parsedIdx=0;
+    const allRaw=txtEl.value.trim().split(/\s+/).filter(Boolean);
+    const targetRaw=rawBefore.length;
+
+    for(let r=0;r<allRaw.length&&r<targetRaw;r++){
+      let tok=allRaw[r].replace(/['"''""\u2018\u2019\u201C\u201D`]/g,'');
+      if(!tok)continue;
+      const parts=tok.split(/([^a-zA-Z0-9])/g).filter(Boolean);
+      if(parts.length<=1){parsedIdx++;}
+      else{
+        let merged=[];
+        for(const p of parts){
+          if(/^[^a-zA-Z0-9]$/.test(p)&&merged.length)merged[merged.length-1]+=p;
+          else merged.push(p);
+        }
+        parsedIdx+=merged.filter(Boolean).length;
+      }
+    }
+
+    // Set the reader to start from this word
+    if(parsedIdx>0&&parsedIdx<words.length){
+      if(playing)pause();
+      idx=parsedIdx;
+      idxRef=parsedIdx;
+      show(words[idx]);
+      idx++;
+      stats();
+      playBtn.textContent='▶ Play';
+    }
+  });
+
+  document.addEventListener('keydown',e=>{
+    if(e.target===txtEl)return;
+    if(e.code==='Space'){e.preventDefault();playing?pause():play();}
+    if(e.code==='ArrowRight'){e.preventDefault();wpm=Math.min(1200,wpm+50);slider.value=wpm;spdVal.textContent=wpm;wLbl.textContent=wpm+' WPM';save();}
+    if(e.code==='ArrowLeft'){e.preventDefault();wpm=Math.max(100,wpm-50);slider.value=wpm;spdVal.textContent=wpm;wLbl.textContent=wpm+' WPM';save();}
+    if(e.code==='KeyR')reset();
+  });
+
+  (document.fonts&&document.fonts.ready?document.fonts.ready:new Promise(r=>window.onload=r)).then(()=>{measure();load();});
+</script>
+</body>
+</html>
