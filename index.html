@@ -191,6 +191,13 @@
     white-space:nowrap;
   }
   .btn:hover { background:var(--surface2); border-color:var(--dim); }
+  .btn-icon {
+    width:14px; height:14px;
+    vertical-align:-2px; margin-right:6px;
+    display:inline-block;
+  }
+  #uploadBtn { display:inline-flex; align-items:center; }
+  #uploadBtn .btn-icon { margin-right:6px; vertical-align:middle; color:var(--accent); }
   .btn-play {
     background:var(--accent); border-color:var(--accent);
     color:#fff; flex-shrink:0;
@@ -551,6 +558,9 @@
       <button class="btn btn-play" id="playBtn">▶ Play</button>
       <button class="btn" id="resetBtn">↺ Reset</button>
       <button class="btn" id="randomBtn">🎲 Sample</button>
+      <button class="btn" id="uploadBtn" title="Upload PDF, EPUB, or TXT"><svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="M7 8l5-5 5 5"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>Upload</button>
+      <input type="file" id="fileInput" accept=".pdf,.epub,.txt,.md,application/pdf,application/epub+zip,text/plain" style="display:none">
+      <span id="uploadStatus" style="display:none;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--accent);letter-spacing:1px;"></span>
       <div class="speed-row">
         <label>WPM</label>
         <input type="range" min="100" max="1200" step="25" value="250" id="slider">
@@ -732,8 +742,22 @@
     wLbl.textContent=`${wpm} WPM`;
   }
 
+  // Large books would freeze the DOM if we rendered a span per word.
+  // Above this threshold we switch to "book mode" — no per-word spans.
+  const BOOK_MODE_THRESHOLD = 8000;
+  let bookMode = false;
+
   function renderSpans(){
     readerView.innerHTML='';
+    bookMode = words.length > BOOK_MODE_THRESHOLD;
+    if(bookMode){
+      const info=document.createElement('div');
+      info.id='bookInfo';
+      info.style.cssText='font-family:"JetBrains Mono",monospace;font-size:12px;color:var(--text2);letter-spacing:1px;text-align:center;padding:18px 8px;';
+      info.innerHTML='<div style="color:var(--dim);font-size:10px;margin-bottom:8px;">📖 BOOK MODE — '+words.length.toLocaleString()+' WORDS</div><div id="bookProgress" style="font-size:13px;">0% · 0 / '+words.length.toLocaleString()+'</div>';
+      readerView.appendChild(info);
+      return;
+    }
     words.forEach((w,i)=>{
       const s=document.createElement('span');
       s.className='w';s.dataset.i=i;s.textContent=w;
@@ -743,6 +767,14 @@
   }
 
   function highlightCurrent(i){
+    if(bookMode){
+      const p=document.getElementById('bookProgress');
+      if(p){
+        const pct=words.length?Math.floor((i/words.length)*100):0;
+        p.textContent=pct+'% · '+i.toLocaleString()+' / '+words.length.toLocaleString();
+      }
+      return;
+    }
     const prev=readerView.querySelector('.w.cur');
     if(prev){prev.classList.remove('cur');prev.classList.add('read');}
     const el=readerView.querySelector(`.w[data-i="${i}"]`);
@@ -911,6 +943,146 @@
     idx++;
     stats();
     playBtn.textContent='▶ Play';
+  });
+
+  // ── File upload: PDF / EPUB / TXT ──
+  const uploadBtn=$('uploadBtn'),fileInput=$('fileInput'),uploadStatus=$('uploadStatus');
+  uploadBtn.addEventListener('click',()=>fileInput.click());
+
+  function setStatus(msg,isError){
+    if(!msg){uploadStatus.style.display='none';uploadStatus.textContent='';return;}
+    uploadStatus.style.display='';
+    uploadStatus.textContent=msg;
+    uploadStatus.style.color=isError?'#ff6b6b':'var(--accent)';
+  }
+
+  // Cache dynamic imports so repeat uploads don't refetch.
+  let _pdfjs=null,_jszip=null;
+  async function loadPdfJs(){
+    if(_pdfjs)return _pdfjs;
+    const mod=await import('https://cdn.jsdelivr.net/npm/pdfjs-dist@4.0.379/build/pdf.min.mjs');
+    mod.GlobalWorkerOptions.workerSrc='https://cdn.jsdelivr.net/npm/pdfjs-dist@4.0.379/build/pdf.worker.min.mjs';
+    _pdfjs=mod;return mod;
+  }
+  async function loadJSZip(){
+    if(_jszip)return _jszip;
+    await new Promise((res,rej)=>{
+      const s=document.createElement('script');
+      s.src='https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js';
+      s.onload=res;s.onerror=()=>rej(new Error('JSZip load failed'));
+      document.head.appendChild(s);
+    });
+    _jszip=window.JSZip;return _jszip;
+  }
+
+  async function extractPdf(file){
+    const pdfjs=await loadPdfJs();
+    const buf=await file.arrayBuffer();
+    const pdf=await pdfjs.getDocument({data:buf}).promise;
+    const pages=pdf.numPages;
+    let out=[];
+    for(let p=1;p<=pages;p++){
+      setStatus(`Extracting PDF ${p}/${pages}…`);
+      const page=await pdf.getPage(p);
+      const tc=await page.getTextContent();
+      // pdf.js gives text as positioned items; add line breaks on Y changes
+      // so paragraphs stay separated.
+      let lastY=null,line=[];
+      const chunks=[];
+      for(const it of tc.items){
+        const y=it.transform?it.transform[5]:null;
+        if(lastY!==null&&y!==null&&Math.abs(y-lastY)>2){
+          chunks.push(line.join(' '));line=[];
+        }
+        if(it.str)line.push(it.str);
+        if(y!==null)lastY=y;
+      }
+      if(line.length)chunks.push(line.join(' '));
+      out.push(chunks.join('\n'));
+    }
+    return out.join('\n\n');
+  }
+
+  function stripHtml(html){
+    const d=document.createElement('div');
+    d.innerHTML=html.replace(/<\s*(script|style)[\s\S]*?<\/\s*\1\s*>/gi,'');
+    return d.textContent||d.innerText||'';
+  }
+
+  async function extractEpub(file){
+    const JSZip=await loadJSZip();
+    const zip=await JSZip.loadAsync(file);
+    // Find OPF via container.xml; fall back to any html files if missing.
+    const containerFile=zip.file('META-INF/container.xml');
+    let opfPath=null;
+    if(containerFile){
+      const cx=await containerFile.async('string');
+      const m=cx.match(/full-path="([^"]+)"/);
+      if(m)opfPath=m[1];
+    }
+    let htmlFiles=[];
+    if(opfPath){
+      const opfStr=await zip.file(opfPath).async('string');
+      const base=opfPath.includes('/')?opfPath.substring(0,opfPath.lastIndexOf('/')+1):'';
+      const manifest={};
+      const manRe=/<item\s+[^>]*id="([^"]+)"[^>]*href="([^"]+)"[^>]*\/>/g;
+      let mm;
+      while((mm=manRe.exec(opfStr))!==null){manifest[mm[1]]=mm[2];}
+      const spineRe=/<itemref\s+[^>]*idref="([^"]+)"/g;
+      let sm;
+      while((sm=spineRe.exec(opfStr))!==null){
+        const href=manifest[sm[1]];
+        if(href)htmlFiles.push(base+href);
+      }
+    }
+    if(!htmlFiles.length){
+      zip.forEach((path,entry)=>{
+        if(/\.(x?html|htm)$/i.test(path)&&!entry.dir)htmlFiles.push(path);
+      });
+      htmlFiles.sort();
+    }
+    let out=[];
+    for(let i=0;i<htmlFiles.length;i++){
+      setStatus(`Extracting EPUB ${i+1}/${htmlFiles.length}…`);
+      const entry=zip.file(htmlFiles[i]);
+      if(!entry)continue;
+      const html=await entry.async('string');
+      out.push(stripHtml(html));
+    }
+    return out.join('\n\n').replace(/\n{3,}/g,'\n\n');
+  }
+
+  async function extractTxt(file){return await file.text();}
+
+  fileInput.addEventListener('change',async e=>{
+    const file=e.target.files&&e.target.files[0];
+    if(!file)return;
+    fileInput.value='';
+    pause();
+    setStatus('Reading '+file.name+'…');
+    try{
+      const name=file.name.toLowerCase();
+      let text='';
+      if(name.endsWith('.pdf')||file.type==='application/pdf'){
+        text=await extractPdf(file);
+      } else if(name.endsWith('.epub')||file.type==='application/epub+zip'){
+        text=await extractEpub(file);
+      } else {
+        text=await extractTxt(file);
+      }
+      text=text.replace(/\u00AD/g,'').replace(/[ \t]+\n/g,'\n').trim();
+      if(!text){setStatus('No text found in file.',true);return;}
+      txtEl.value=text;
+      parse();
+      reset();
+      // Big books blow the localStorage quota — don't persist.
+      if(text.length<500000){save();}
+      setStatus('✓ Loaded '+words.length.toLocaleString()+' words');
+      setTimeout(()=>{if(uploadStatus.textContent.startsWith('✓'))setStatus('');},3500);
+    } catch(err){
+      console.error(err);
+      setStatus('Error: '+(err.message||'could not read file'),true);
+    }
   });
 
   document.addEventListener('keydown',e=>{
