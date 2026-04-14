@@ -12,6 +12,8 @@
 <meta property="og:type" content="website">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="canonical" href="https://vortexread.com">
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="apple-touch-icon" href="favicon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700;800&family=Outfit:wght@300;400;500;600;700;800;900&family=DM+Sans:wght@400;500&display=swap" rel="stylesheet">
@@ -213,17 +215,32 @@
     -webkit-appearance:none; width:14px;height:14px;
     border-radius:50%; background:var(--accent); cursor:pointer;
     box-shadow:0 0 8px var(--glow);
+    transition:background 0.2s, box-shadow 0.2s;
   }
   .speed-row input[type=range]::-moz-range-thumb {
     width:14px;height:14px; border-radius:50%;
     background:var(--accent); cursor:pointer; border:none;
+    transition:background 0.2s;
   }
+  /* Tier-colored slider */
+  .speed-row input.tier-casual::-webkit-slider-thumb { background:var(--dim); box-shadow:0 0 8px rgba(85,85,94,0.4); }
+  .speed-row input.tier-casual::-moz-range-thumb { background:var(--dim); }
+  .speed-row input.tier-focused::-webkit-slider-thumb { background:var(--text2); box-shadow:0 0 8px rgba(192,190,184,0.4); }
+  .speed-row input.tier-focused::-moz-range-thumb { background:var(--text2); }
+  .speed-row input.tier-vortex::-webkit-slider-thumb { background:var(--yellow); box-shadow:0 0 10px rgba(255,214,10,0.5); }
+  .speed-row input.tier-vortex::-moz-range-thumb { background:var(--yellow); }
+
   .wpm-val {
     font-family:'JetBrains Mono',monospace;
     font-size:16px; font-weight:800;
     color:var(--yellow); min-width:48px;
     text-align:right; flex-shrink:0;
+    transition:color 0.2s;
   }
+  .wpm-val.tier-casual { color:var(--dim); }
+  .wpm-val.tier-focused { color:var(--text2); }
+  .wpm-val.tier-speed { color:var(--accent); }
+  .wpm-val.tier-vortex { color:var(--yellow); }
 
   .reader-textarea {
     width:100%; min-height:110px;
@@ -239,6 +256,31 @@
   }
   .reader-textarea:focus { border-color:var(--accent); box-shadow:0 0 0 3px var(--glow); }
   .reader-textarea::placeholder { color:var(--dim); }
+
+  .reader-view {
+    width:100%; min-height:110px;
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:10px; color:var(--text2);
+    font-family:'DM Sans',sans-serif;
+    font-size:14px; line-height:1.6;
+    padding:14px 16px;
+    margin-bottom:8px;
+    max-height:260px; overflow-y:auto;
+  }
+  .reader-view .w {
+    cursor:pointer;
+    transition:color 0.08s linear;
+    border-radius:3px;
+    padding:0 1px;
+  }
+  .reader-view .w:hover { color:var(--text); }
+  .reader-view .w.cur {
+    color:var(--accent);
+    font-weight:700;
+    background:var(--glow2);
+  }
+  .reader-view .w.read { color:var(--dim); }
 
   .reader-footer {
     display:flex; justify-content:space-between;
@@ -268,7 +310,17 @@
     flex-direction:column;
     align-items:center;
     gap:8px;
+    background:transparent;
+    border:none;
+    padding:6px 4px;
+    border-radius:8px;
+    cursor:pointer;
+    font:inherit;
+    color:inherit;
+    transition:background 0.15s, transform 0.15s;
   }
+  .tier:hover { background:var(--surface2); transform:translateY(-2px); }
+  .tier.selected { background:var(--surface2); box-shadow:inset 0 0 0 1px var(--border); }
 
   .tier-node {
     width:12px; height:12px;
@@ -287,6 +339,7 @@
   .tier:last-child .tier-node::before { display:none; }
 
   .tier-locked { background:var(--surface2); border-color:var(--dim); }
+  .tier-cream { background:var(--text2); border-color:var(--text2); box-shadow:0 0 8px rgba(192,190,184,0.3); }
   .tier-active { background:var(--accent); border-color:var(--accent); box-shadow:0 0 8px var(--glow); }
   .tier-gold { background:var(--yellow); border-color:var(--yellow); box-shadow:0 0 8px rgba(255,214,10,0.3); }
 
@@ -488,10 +541,9 @@
           <span class="rsvp-right" id="rsvpRight"></span>
         </div>
       </div>
-      <div class="prog-track"><div class="prog-fill" id="progFill"></div></div>
       <div class="stats">
         <span id="wordIdx">0 / 0</span>
-        <span class="wpm" id="wpmLbl">450 WPM</span>
+        <span class="wpm" id="wpmLbl">250 WPM</span>
       </div>
     </div>
 
@@ -501,12 +553,13 @@
       <button class="btn" id="randomBtn">🎲 Sample</button>
       <div class="speed-row">
         <label>WPM</label>
-        <input type="range" min="100" max="1200" step="25" value="450" id="slider">
-        <span class="wpm-val" id="spdVal">450</span>
+        <input type="range" min="100" max="1200" step="25" value="250" id="slider">
+        <span class="wpm-val" id="spdVal">250</span>
       </div>
     </div>
 
     <textarea class="reader-textarea" id="txt" placeholder="Paste any text here and hit play..."></textarea>
+    <div class="reader-view" id="readerView" style="display:none"></div>
 
     <div class="reader-footer">
       <span id="wc">0 words</span>
@@ -515,38 +568,38 @@
 
     <!-- Skill tree: speed tiers -->
     <div class="skill-tree">
-      <div class="tier">
+      <button type="button" class="tier" data-wpm="200">
         <div class="tier-node tier-locked"></div>
         <div class="tier-bar"><div class="tier-fill" style="width:100%;background:var(--dim)"></div></div>
         <div class="tier-info">
           <span class="tier-name">Casual</span>
           <span class="tier-wpm">200 wpm</span>
         </div>
-      </div>
-      <div class="tier">
-        <div class="tier-node tier-locked"></div>
+      </button>
+      <button type="button" class="tier" data-wpm="400">
+        <div class="tier-node tier-cream"></div>
         <div class="tier-bar"><div class="tier-fill" style="width:100%;background:var(--text2)"></div></div>
         <div class="tier-info">
           <span class="tier-name">Focused</span>
           <span class="tier-wpm">400 wpm</span>
         </div>
-      </div>
-      <div class="tier">
+      </button>
+      <button type="button" class="tier" data-wpm="600">
         <div class="tier-node tier-active"></div>
         <div class="tier-bar"><div class="tier-fill" style="width:100%;background:var(--accent)"></div></div>
         <div class="tier-info">
           <span class="tier-name">Speed Reader</span>
           <span class="tier-wpm">600 wpm</span>
         </div>
-      </div>
-      <div class="tier">
+      </button>
+      <button type="button" class="tier" data-wpm="900">
         <div class="tier-node tier-gold"></div>
         <div class="tier-bar"><div class="tier-fill" style="width:100%;background:var(--yellow)"></div></div>
         <div class="tier-info">
           <span class="tier-name">Vortex</span>
           <span class="tier-wpm">900+ wpm</span>
         </div>
-      </div>
+      </button>
     </div>
   </div>
 
@@ -632,11 +685,12 @@
   const $=id=>document.getElementById(id);
   const txtEl=$('txt'),idleMsg=$('idleMsg'),rsvpWrap=$('rsvpWrap'),
     rL=$('rsvpLeft'),rP=$('rsvpPivot'),rR=$('rsvpRight'),
-    wd=$('wordDisplay'),pf=$('progFill'),wiLbl=$('wordIdx'),
+    wd=$('wordDisplay'),wiLbl=$('wordIdx'),
     wLbl=$('wpmLbl'),slider=$('slider'),spdVal=$('spdVal'),
-    playBtn=$('playBtn'),resetBtn=$('resetBtn'),wcLbl=$('wc');
+    playBtn=$('playBtn'),resetBtn=$('resetBtn'),wcLbl=$('wc'),
+    readerView=$('readerView');
 
-  let words=[],idx=0,playing=false,timer=null,wpm=450,charW=0;
+  let words=[],idx=0,playing=false,timer=null,wpm=250,charW=0;
 
   function measure(){
     const m=document.createElement('span');
@@ -674,28 +728,74 @@
 
   function stats(){
     const t=words.length;
-    pf.style.width=t?(idx/t*100)+'%':'0%';
     wiLbl.textContent=`${idx} / ${t}`;
     wLbl.textContent=`${wpm} WPM`;
   }
 
+  function renderSpans(){
+    readerView.innerHTML='';
+    words.forEach((w,i)=>{
+      const s=document.createElement('span');
+      s.className='w';s.dataset.i=i;s.textContent=w;
+      readerView.appendChild(s);
+      if(i<words.length-1)readerView.appendChild(document.createTextNode(' '));
+    });
+  }
+
+  function highlightCurrent(i){
+    const prev=readerView.querySelector('.w.cur');
+    if(prev){prev.classList.remove('cur');prev.classList.add('read');}
+    const el=readerView.querySelector(`.w[data-i="${i}"]`);
+    if(el){
+      el.classList.remove('read');
+      el.classList.add('cur');
+      const r=el.getBoundingClientRect(),vr=readerView.getBoundingClientRect();
+      if(r.top<vr.top||r.bottom>vr.bottom){
+        el.scrollIntoView({block:'center',behavior:'smooth'});
+      }
+    }
+  }
+
+  function clearHighlights(){
+    readerView.querySelectorAll('.w').forEach(e=>e.classList.remove('cur','read'));
+  }
+
+  function showReaderView(){
+    txtEl.style.display='none';
+    readerView.style.display='';
+  }
+  function showEditor(){
+    readerView.style.display='none';
+    txtEl.style.display='';
+  }
+
   function tick(){
     if(idx>=words.length){stop();return;}
-    show(words[idx]);const d=ms(words[idx]);
+    show(words[idx]);
+    highlightCurrent(idx);
+    const d=ms(words[idx]);
     idx++;stats();timer=setTimeout(tick,d);
   }
 
   function play(){
     if(!words.length)parse();if(!words.length)return;
-    if(idx>=words.length)idx=0;
+    if(idx>=words.length){idx=0;clearHighlights();}
+    renderSpans();
+    // re-apply read state for already-consumed words
+    for(let k=0;k<idx;k++){
+      const el=readerView.querySelector(`.w[data-i="${k}"]`);
+      if(el)el.classList.add('read');
+    }
+    showReaderView();
     playing=true;playBtn.textContent='⏸ Pause';tick();
   }
   function pause(){playing=false;clearTimeout(timer);playBtn.textContent='▶ Play';}
   function stop(){pause();playBtn.textContent='▶ Replay';}
   function reset(){
     pause();idx=0;rsvpWrap.style.display='none';idleMsg.style.display='';
-    pf.style.width='0%';wiLbl.textContent=`0 / ${words.length}`;
+    wiLbl.textContent=`0 / ${words.length}`;
     wLbl.textContent=`${wpm} WPM`;playBtn.textContent='▶ Play';
+    clearHighlights();showEditor();
   }
 
   function parse(){
@@ -722,10 +822,41 @@
   function load(){try{
     const t=localStorage.getItem('vr-t'),w=localStorage.getItem('vr-w');
     if(t){txtEl.value=t;parse();}
-    if(w){wpm=+w;slider.value=wpm;spdVal.textContent=wpm;wLbl.textContent=wpm+' WPM';}
+    if(w){setWpm(w);} else {setWpm(wpm);}
   }catch{}}
 
-  slider.addEventListener('input',()=>{wpm=+slider.value;spdVal.textContent=wpm;wLbl.textContent=wpm+' WPM';save();});
+  function setWpm(v){
+    wpm=Math.max(100,Math.min(1200,+v||450));
+    slider.value=wpm;spdVal.textContent=wpm;wLbl.textContent=wpm+' WPM';
+    // Determine current tier
+    let tier='speed';
+    if(wpm<300)tier='casual';
+    else if(wpm<500)tier='focused';
+    else if(wpm<750)tier='speed';
+    else tier='vortex';
+    // Apply tier color classes to slider + wpm value label
+    slider.classList.remove('tier-casual','tier-focused','tier-speed','tier-vortex');
+    spdVal.classList.remove('tier-casual','tier-focused','tier-speed','tier-vortex');
+    slider.classList.add('tier-'+tier);
+    spdVal.classList.add('tier-'+tier);
+    // Highlight the matching tier button
+    document.querySelectorAll('.tier').forEach(t=>{
+      const tv=+t.dataset.wpm;
+      t.classList.toggle('selected',
+        (tv===200&&tier==='casual')||
+        (tv===400&&tier==='focused')||
+        (tv===600&&tier==='speed')||
+        (tv===900&&tier==='vortex')
+      );
+    });
+    save();
+  }
+  slider.addEventListener('input',()=>setWpm(slider.value));
+  document.querySelectorAll('.tier').forEach(t=>{
+    t.addEventListener('click',()=>setWpm(t.dataset.wpm));
+  });
+  // Apply tier colors immediately so slider thumb/label match default WPM on first paint
+  setWpm(wpm);
   playBtn.addEventListener('click',()=>playing?pause():play());
   resetBtn.addEventListener('click',reset);
 
@@ -761,57 +892,32 @@
     save();
   });
 
-  // ── Click-to-seek: click a word in textarea to start reading from there ──
-  txtEl.addEventListener('click',()=>{
-    if(!txtEl.value.trim())return;
-    // Count how many whitespace-separated words are before the cursor
-    const pos=txtEl.selectionStart;
-    const textBefore=txtEl.value.slice(0,pos);
-    // Count raw words before cursor
-    const rawBefore=textBefore.trim().split(/\s+/).filter(Boolean);
-    if(!rawBefore.length)return;
-
-    // We need to map raw word index to parsed word index
-    // Since parse() splits tokens further, we need to count how many parsed words
-    // correspond to the raw words before cursor
-    if(!words.length)parse();
-
-    let rawIdx=0, parsedIdx=0;
-    const allRaw=txtEl.value.trim().split(/\s+/).filter(Boolean);
-    const targetRaw=rawBefore.length;
-
-    for(let r=0;r<allRaw.length&&r<targetRaw;r++){
-      let tok=allRaw[r].replace(/['"''""\u2018\u2019\u201C\u201D`]/g,'');
-      if(!tok)continue;
-      const parts=tok.split(/([^a-zA-Z0-9])/g).filter(Boolean);
-      if(parts.length<=1){parsedIdx++;}
-      else{
-        let merged=[];
-        for(const p of parts){
-          if(/^[^a-zA-Z0-9]$/.test(p)&&merged.length)merged[merged.length-1]+=p;
-          else merged.push(p);
-        }
-        parsedIdx+=merged.filter(Boolean).length;
-      }
-    }
-
-    // Set the reader to start from this word
-    if(parsedIdx>0&&parsedIdx<words.length){
-      if(playing)pause();
-      idx=parsedIdx;
-      idxRef=parsedIdx;
-      show(words[idx]);
-      idx++;
-      stats();
-      playBtn.textContent='▶ Play';
-    }
+  // Click a word in the reader view to seek there
+  readerView.addEventListener('click',e=>{
+    const t=e.target.closest('.w');
+    if(!t)return;
+    const i=+t.dataset.i;
+    if(isNaN(i))return;
+    if(playing)pause();
+    idx=i;
+    // mark earlier as read, clear later
+    readerView.querySelectorAll('.w').forEach(el=>{
+      const ei=+el.dataset.i;
+      el.classList.remove('cur','read');
+      if(ei<i)el.classList.add('read');
+    });
+    show(words[idx]);
+    highlightCurrent(idx);
+    idx++;
+    stats();
+    playBtn.textContent='▶ Play';
   });
 
   document.addEventListener('keydown',e=>{
     if(e.target===txtEl)return;
     if(e.code==='Space'){e.preventDefault();playing?pause():play();}
-    if(e.code==='ArrowRight'){e.preventDefault();wpm=Math.min(1200,wpm+50);slider.value=wpm;spdVal.textContent=wpm;wLbl.textContent=wpm+' WPM';save();}
-    if(e.code==='ArrowLeft'){e.preventDefault();wpm=Math.max(100,wpm-50);slider.value=wpm;spdVal.textContent=wpm;wLbl.textContent=wpm+' WPM';save();}
+    if(e.code==='ArrowRight'){e.preventDefault();setWpm(wpm+50);}
+    if(e.code==='ArrowLeft'){e.preventDefault();setWpm(wpm-50);}
     if(e.code==='KeyR')reset();
   });
 

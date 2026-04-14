@@ -1,0 +1,6 @@
+# Claude Code working directory
+.claude/
+
+# Dev artifacts (not needed for the live site)
+favicon-preview.svg
+Gemini_Generated_Image_*.png
